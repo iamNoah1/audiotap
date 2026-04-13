@@ -1,0 +1,5 @@
+audiotap
+dist/
+*.mp3
+*.opus
+*.wav

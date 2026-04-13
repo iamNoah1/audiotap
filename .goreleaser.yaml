@@ -1,0 +1,109 @@
+version: 2
+
+project_name: audiotap
+
+before:
+  hooks:
+    - go mod tidy
+    - go vet ./...
+
+builds:
+  - id: audiotap
+    main: .
+    binary: audiotap
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/iamNoah1/audiotap/cmd.version={{.Version}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: audiotap
+    builds: [audiotap]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: "New Features"
+      regexp: "^feat"
+      order: 0
+    - title: "Bug Fixes"
+      regexp: "^fix"
+      order: 1
+    - title: "Other Changes"
+      order: 99
+
+release:
+  github:
+    owner: iamNoah1
+    name: audiotap
+  name_template: "v{{.Version}}"
+  draft: false
+  prerelease: auto
+
+# Docker image — uses a separate lightweight Dockerfile that expects the
+# pre-built binary already in the build context (supplied by GoReleaser).
+dockers:
+  - id: audiotap-amd64
+    ids: [audiotap]
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - "ghcr.io/iamnoah1/audiotap:{{ .Tag }}-amd64"
+      - "ghcr.io/iamnoah1/audiotap:latest"
+    dockerfile: Dockerfile.release
+    build_flag_templates:
+      - "--platform=linux/amd64"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.source=https://github.com/iamNoah1/audiotap"
+      - "--label=org.opencontainers.image.licenses=MIT"
+
+  - id: audiotap-arm64
+    ids: [audiotap]
+    goos: linux
+    goarch: arm64
+    image_templates:
+      - "ghcr.io/iamnoah1/audiotap:{{ .Tag }}-arm64"
+    dockerfile: Dockerfile.release
+    build_flag_templates:
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: "ghcr.io/iamnoah1/audiotap:{{ .Tag }}"
+    image_templates:
+      - "ghcr.io/iamnoah1/audiotap:{{ .Tag }}-amd64"
+      - "ghcr.io/iamnoah1/audiotap:{{ .Tag }}-arm64"
+  - name_template: "ghcr.io/iamnoah1/audiotap:latest"
+    image_templates:
+      - "ghcr.io/iamnoah1/audiotap:{{ .Tag }}-amd64"
+      - "ghcr.io/iamnoah1/audiotap:{{ .Tag }}-arm64"

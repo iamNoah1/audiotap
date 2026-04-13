@@ -1,0 +1,19 @@
+# Runtime-only Dockerfile used by GoReleaser.
+# GoReleaser pre-builds the binary and places it in the Docker build context —
+# there is no Go toolchain here to keep the image small.
+FROM python:3.11-slim
+
+LABEL org.opencontainers.image.title="audiotap" \
+      org.opencontainers.image.description="Extract audio from YouTube videos" \
+      org.opencontainers.image.source="https://github.com/iamNoah1/audiotap" \
+      org.opencontainers.image.licenses="MIT"
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir yt-dlp
+
+COPY audiotap /usr/local/bin/audiotap
+
+ENTRYPOINT ["audiotap"]

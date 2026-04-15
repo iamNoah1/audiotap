@@ -51,6 +51,20 @@ func TestGetCacheDir_ReturnsPath(t *testing.T) {
 	}
 }
 
+func TestGetCacheDir_Override(t *testing.T) {
+	want := t.TempDir()
+	SetCacheDir(want)
+	defer SetCacheDir("")
+
+	got, err := getCacheDir()
+	if err != nil {
+		t.Fatalf("getCacheDir: %v", err)
+	}
+	if got != want {
+		t.Errorf("expected %q, got %q", want, got)
+	}
+}
+
 func TestGetCacheDir_WindowsFallback(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("windows-only test")

@@ -8,12 +8,11 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/iamNoah1/audiotap/internal/manager"
 )
 
-// ErrYtDlpNotFound is returned when yt-dlp is not on PATH.
-var ErrYtDlpNotFound = errors.New("yt-dlp not found. Run: pip install yt-dlp")
-
-// ErrFfmpegNotFound is returned when ffmpeg is not on PATH and mp3 conversion is requested.
+// ErrFfmpegNotFound is returned when ffmpeg is not on PATH and mp3/wav conversion is requested.
 var ErrFfmpegNotFound = errors.New("ffmpeg not found. Install via brew install ffmpeg (macOS) or apt install ffmpeg (Linux)")
 
 // ErrInvalidURL is returned when the URL does not look like a YouTube URL.
@@ -59,7 +58,7 @@ func Download(rawURL string, cfg Config) (string, error) {
 	}
 
 	var stdout, stderr bytes.Buffer
-	cmd := exec.Command("yt-dlp", args...)
+	cmd := exec.Command(manager.BinaryPath(), args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
@@ -89,9 +88,6 @@ func validateURL(raw string) error {
 }
 
 func checkDependencies(format string) error {
-	if _, err := exec.LookPath("yt-dlp"); err != nil {
-		return ErrYtDlpNotFound
-	}
 	if format == "mp3" || format == "wav" {
 		if _, err := exec.LookPath("ffmpeg"); err != nil {
 			return ErrFfmpegNotFound

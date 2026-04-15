@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/iamNoah1/audiotap/downloader"
+	"github.com/iamNoah1/audiotap/internal/manager"
 	"github.com/spf13/cobra"
 )
 
@@ -34,8 +35,9 @@ Examples:
   audiotap "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
   audiotap "https://youtu.be/abc" "https://youtu.be/xyz" --format opus
   audiotap --input urls.txt --output-dir ./audio --workers 4`,
-	Args: cobra.ArbitraryArgs,
-	RunE: run,
+	Args:              cobra.ArbitraryArgs,
+	PersistentPreRunE: setup,
+	RunE:              run,
 }
 
 func Execute() {
@@ -46,9 +48,14 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().StringVar(&outputDir, "output-dir", "", "Directory to save audio files (default: current directory)")
-	rootCmd.Flags().StringVar(&format, "format", "mp3", "Audio format: mp3, opus, wav")
+	rootCmd.Flags().StringVar(&format, "format", "opus", "Audio format: mp3, opus, wav")
 	rootCmd.Flags().StringVarP(&inputFile, "input", "i", "", "File containing YouTube URLs, one per line")
 	rootCmd.Flags().IntVarP(&workers, "workers", "w", runtime.NumCPU(), "Number of parallel downloads")
+}
+
+// setup runs before any command and ensures yt-dlp is available.
+func setup(_ *cobra.Command, _ []string) error {
+	return manager.Ensure()
 }
 
 func run(_ *cobra.Command, args []string) error {
@@ -71,7 +78,7 @@ func run(_ *cobra.Command, args []string) error {
 	}
 
 	if len(urls) == 1 {
-		outFile, err := downloader.Download(urls[0], cfg)
+		outFile, err := downloader.DownloadWithProgress(urls[0], cfg)
 		if err != nil {
 			log.Printf("error: %v", err)
 			os.Exit(1)

@@ -38,21 +38,18 @@ Wraps [yt-dlp](https://github.com/yt-dlp/yt-dlp) with a clean interface, paralle
 | Requirement | Notes |
 |-------------|-------|
 | Go 1.22+ | Only needed for `go install` / building from source |
-| `yt-dlp` on `$PATH` | See install instructions below |
-| `ffmpeg` on `$PATH` | Required for mp3 and wav conversion |
+| `ffmpeg` on `$PATH` | Required only for `--format mp3` or `--format wav` |
 
-Install yt-dlp and ffmpeg:
+`yt-dlp` is downloaded automatically on first run — no manual installation needed.
+
+To install ffmpeg (only needed for mp3/wav output):
 
 ```bash
 # macOS
-brew install ffmpeg yt-dlp
+brew install ffmpeg
 
 # Ubuntu / Debian
 sudo apt install ffmpeg
-pip install yt-dlp
-
-# pip (any platform)
-pip install yt-dlp
 ```
 
 ---
@@ -64,6 +61,8 @@ pip install yt-dlp
 ```bash
 go install github.com/iamNoah1/audiotap@latest
 ```
+
+> **First run:** audiotap automatically downloads the `yt-dlp` binary for your platform (~10 MB) to `~/.local/share/audiotap/bin/`. This happens once and is silent on all subsequent runs.
 
 ### Pre-built binaries
 
@@ -133,7 +132,7 @@ audiotap --input urls.txt --output-dir ./audio && whisperbatch -i ./audio
 | Flag | Short | Type | Default | Description |
 |------|-------|------|---------|-------------|
 | `--output-dir` | | string | current dir | Directory to save audio files |
-| `--format` | | string | `mp3` | Audio format: `mp3`, `opus`, `wav` |
+| `--format` | | string | `opus` | Audio format: `mp3`, `opus`, `wav` |
 | `--input` | `-i` | string | | File of YouTube URLs, one per line |
 | `--workers` | `-w` | int | CPU count | Parallel download workers (batch mode) |
 | `--version` | | | | Print version and exit |

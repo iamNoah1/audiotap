@@ -133,7 +133,15 @@ func downloadFile(dest, url string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	_, err = io.Copy(f, resp.Body)
-	return err
+	_, copyErr := io.Copy(f, resp.Body)
+	closeErr := f.Close()
+	if copyErr != nil {
+		os.Remove(dest)
+		return copyErr
+	}
+	if closeErr != nil {
+		os.Remove(dest)
+		return closeErr
+	}
+	return nil
 }

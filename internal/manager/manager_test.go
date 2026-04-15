@@ -1,6 +1,9 @@
 package manager
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -76,5 +79,88 @@ func TestGetCacheDir_WindowsFallback(t *testing.T) {
 	_, err := getCacheDir()
 	if err == nil {
 		t.Fatal("expected error when APPDATA unset, got nil")
+	}
+}
+
+func TestEnsure_CacheHit(t *testing.T) {
+	tmp := t.TempDir()
+	SetCacheDir(tmp)
+	defer SetCacheDir("")
+	resolvedPath = "" // reset package state
+
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+	// Create a fake binary in the cache dir
+	fake := filepath.Join(tmp, "yt-dlp"+ext)
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\n"), 0755); err != nil {
+		t.Fatalf("creating fake binary: %v", err)
+	}
+
+	// Override PATH so exec.LookPath cannot find a system yt-dlp,
+	// forcing Ensure() to fall through to the cache check.
+	emptyDir := t.TempDir()
+	origPath := os.Getenv("PATH")
+	os.Setenv("PATH", emptyDir)
+	defer os.Setenv("PATH", origPath)
+
+	// Ensure must NOT make any network call — it finds the cached binary
+	// We point downloads at an invalid URL to confirm no request is made
+	origURL := downloadBaseURL
+	SetDownloadBaseURL("http://127.0.0.1:1") // connection refused
+	defer SetDownloadBaseURL(origURL)
+
+	if err := Ensure(); err != nil {
+		t.Fatalf("Ensure: %v", err)
+	}
+	if BinaryPath() != fake {
+		t.Errorf("expected %q, got %q", fake, BinaryPath())
+	}
+}
+
+func TestEnsure_Downloads(t *testing.T) {
+	// Serve a minimal fake binary from a test HTTP server
+	served := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		served = true
+		fmt.Fprint(w, "#!/bin/sh\necho fake-yt-dlp\n")
+	}))
+	defer ts.Close()
+
+	tmp := t.TempDir()
+	SetCacheDir(tmp)
+	defer SetCacheDir("")
+	SetDownloadBaseURL(ts.URL)
+	defer SetDownloadBaseURL("https://github.com/yt-dlp/yt-dlp/releases/latest/download")
+	resolvedPath = ""
+
+	// Temporarily make exec.LookPath fail by pointing PATH to an empty dir
+	emptyDir := t.TempDir()
+	origPath := os.Getenv("PATH")
+	os.Setenv("PATH", emptyDir)
+	defer os.Setenv("PATH", origPath)
+
+	if err := Ensure(); err != nil {
+		t.Fatalf("Ensure: %v", err)
+	}
+	if !served {
+		t.Error("expected HTTP server to be hit")
+	}
+
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+	expected := filepath.Join(tmp, "yt-dlp"+ext)
+	if BinaryPath() != expected {
+		t.Errorf("expected %q, got %q", expected, BinaryPath())
+	}
+	info, err := os.Stat(expected)
+	if err != nil {
+		t.Fatalf("stat binary: %v", err)
+	}
+	if runtime.GOOS != "windows" && info.Mode()&0111 == 0 {
+		t.Error("binary is not executable")
 	}
 }

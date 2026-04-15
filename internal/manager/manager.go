@@ -2,7 +2,10 @@ package manager
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 )
@@ -60,4 +63,77 @@ func ytDlpArtifact() (string, error) {
 		return a, nil
 	}
 	return "", fmt.Errorf("unsupported platform %s — install yt-dlp manually: pip install yt-dlp", key)
+}
+
+// Ensure checks for yt-dlp on PATH, then in the cache dir, then downloads it.
+// It is safe to call multiple times; subsequent calls are no-ops if already resolved.
+func Ensure() error {
+	if resolvedPath != "" {
+		return nil
+	}
+
+	// 1. Check PATH
+	if p, err := exec.LookPath("yt-dlp"); err == nil {
+		resolvedPath = p
+		return nil
+	}
+
+	// 2. Check cache
+	cacheDir, err := getCacheDir()
+	if err != nil {
+		return fmt.Errorf("resolving cache dir: %w", err)
+	}
+
+	ext := ""
+	if runtime.GOOS == "windows" {
+		ext = ".exe"
+	}
+	cached := filepath.Join(cacheDir, "yt-dlp"+ext)
+	if _, err := os.Stat(cached); err == nil {
+		resolvedPath = cached
+		return nil
+	}
+
+	// 3. Download
+	artifact, err := ytDlpArtifact()
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprint(os.Stderr, "audiotap: installing yt-dlp (first run)...")
+
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return fmt.Errorf("creating cache dir: %w", err)
+	}
+
+	url := downloadBaseURL + "/" + artifact
+	if err := downloadFile(cached, url); err != nil {
+		return fmt.Errorf("downloading yt-dlp: %w\nInstall manually: pip install yt-dlp", err)
+	}
+
+	if err := os.Chmod(cached, 0755); err != nil {
+		return fmt.Errorf("making yt-dlp executable: %w", err)
+	}
+
+	fmt.Fprintln(os.Stderr, " done")
+	resolvedPath = cached
+	return nil
+}
+
+func downloadFile(dest, url string) error {
+	resp, err := http.Get(url) //nolint:noctx
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
+	}
+	f, err := os.Create(dest)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = io.Copy(f, resp.Body)
+	return err
 }

@@ -86,3 +86,39 @@ func TestProgressWriter_HandlesMultipleLines(t *testing.T) {
 		t.Errorf("expected ~100, got %d", got)
 	}
 }
+
+func TestProgressWriter_HandlesSplitCRLF(t *testing.T) {
+	bar := newTestBar()
+	pw := &progressWriter{bar: bar}
+
+	// Simulate yt-dlp emitting \r\n split across two Write calls
+	first := []byte("[download]  75.0% of   4.20MiB at  2.00MiB/s ETA 00:01\r")
+	second := []byte("\n[download] 100.0% of   4.20MiB at  3.00MiB/s ETA 00:00\n")
+
+	if _, err := pw.Write(first); err != nil {
+		t.Fatalf("Write(first): %v", err)
+	}
+	if _, err := pw.Write(second); err != nil {
+		t.Fatalf("Write(second): %v", err)
+	}
+
+	got := int(bar.State().CurrentPercent * 100)
+	if got < 99 {
+		t.Errorf("expected ~100, got %d", got)
+	}
+}
+
+func TestProgressWriter_AccumulatesStderrLines(t *testing.T) {
+	bar := newTestBar()
+	pw := &progressWriter{bar: bar}
+
+	lines := "[download]  10.0% of   4.20MiB at  1.00MiB/s ETA 00:03\nERROR: Video unavailable\n"
+	if _, err := pw.Write([]byte(lines)); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+
+	stderr := pw.stderrLines.String()
+	if !strings.Contains(stderr, "ERROR: Video unavailable") {
+		t.Errorf("expected stderrLines to contain error message, got: %q", stderr)
+	}
+}

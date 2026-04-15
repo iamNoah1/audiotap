@@ -18,8 +18,9 @@ var progressRe = regexp.MustCompile(`\[download\]\s+(\d+(?:\.\d+)?)%`)
 // progressWriter is an io.Writer that parses yt-dlp progress output
 // and advances a progress bar.
 type progressWriter struct {
-	bar *progressbar.ProgressBar
-	buf bytes.Buffer
+	bar         *progressbar.ProgressBar
+	buf         bytes.Buffer
+	stderrLines strings.Builder
 }
 
 func (pw *progressWriter) Write(p []byte) (int, error) {
@@ -29,6 +30,8 @@ func (pw *progressWriter) Write(p []byte) (int, error) {
 	for i, b := range data {
 		if b == '\n' || b == '\r' {
 			line := string(data[start:i])
+			pw.stderrLines.WriteString(line)
+			pw.stderrLines.WriteByte('\n')
 			if m := progressRe.FindStringSubmatch(line); m != nil {
 				pct, _ := strconv.ParseFloat(m[1], 64)
 				_ = pw.bar.Set(int(pct))
@@ -96,7 +99,7 @@ func DownloadWithProgress(rawURL string, cfg Config) (string, error) {
 
 	if err := cmd.Run(); err != nil {
 		_ = bar.Finish()
-		msg := strings.TrimSpace(pw.buf.String())
+		msg := strings.TrimSpace(pw.stderrLines.String())
 		if strings.Contains(msg, "network") || strings.Contains(msg, "Unable to download") {
 			return "", fmt.Errorf("%w\nTip: make sure the URL is quoted to avoid shell escaping issues", ErrDownloadFailed)
 		}

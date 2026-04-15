@@ -80,8 +80,7 @@ func run(_ *cobra.Command, args []string) error {
 	if len(urls) == 1 {
 		outFile, err := downloader.DownloadWithProgress(urls[0], cfg)
 		if err != nil {
-			log.Printf("error: %v", err)
-			os.Exit(1)
+			return err
 		}
 		fmt.Printf("saved: %s\n", outFile)
 		return nil

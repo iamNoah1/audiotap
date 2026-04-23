@@ -47,15 +47,21 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.Flags().StringVar(&outputDir, "output-dir", "", "Directory to save audio files (default: current directory)")
-	rootCmd.Flags().StringVar(&format, "format", "opus", "Audio format: mp3, opus, wav")
+	rootCmd.Flags().StringVarP(&outputDir, "output-dir", "o", "", "Directory to save audio files (default: current directory)")
+	rootCmd.Flags().StringVarP(&format, "format", "f", "opus", "Audio format: mp3, opus, wav")
 	rootCmd.Flags().StringVarP(&inputFile, "input", "i", "", "File containing YouTube URLs, one per line")
 	rootCmd.Flags().IntVarP(&workers, "workers", "w", runtime.NumCPU(), "Number of parallel downloads")
 }
 
-// setup runs before any command and ensures yt-dlp is available.
+// setup runs before any command and ensures yt-dlp (and ffmpeg when needed) are available.
 func setup(_ *cobra.Command, _ []string) error {
-	return manager.Ensure()
+	if err := manager.Ensure(); err != nil {
+		return err
+	}
+	if format == "mp3" || format == "wav" {
+		return ensureFFmpeg()
+	}
+	return nil
 }
 
 func run(_ *cobra.Command, args []string) error {

@@ -92,4 +92,3 @@ func installFFmpegWindows() error {
 	}
 	return nil
 }
-

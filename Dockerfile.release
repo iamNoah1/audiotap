@@ -1,7 +1,7 @@
 # Runtime-only Dockerfile used by GoReleaser.
 # GoReleaser pre-builds the binary and places it in the Docker build context —
 # there is no Go toolchain here to keep the image small.
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="audiotap" \
       org.opencontainers.image.description="Extract audio from YouTube videos" \

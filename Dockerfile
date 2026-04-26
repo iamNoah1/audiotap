@@ -13,7 +13,7 @@ RUN CGO_ENABLED=0 go build \
         -o audiotap .
 
 # ─── Stage 2: runtime with yt-dlp + ffmpeg ─────────────────────────────────────
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 LABEL org.opencontainers.image.title="audiotap" \
       org.opencontainers.image.description="Extract audio from YouTube videos" \

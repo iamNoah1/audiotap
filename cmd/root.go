@@ -17,10 +17,11 @@ import (
 var version = "dev"
 
 var (
-	outputDir string
-	format    string
-	inputFile string
-	workers   int
+	outputDir   string
+	format      string
+	inputFile   string
+	workers     int
+	cookiesFile string
 )
 
 var rootCmd = &cobra.Command{
@@ -51,6 +52,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&format, "format", "f", "opus", "Audio format: mp3, opus, wav")
 	rootCmd.Flags().StringVarP(&inputFile, "input", "i", "", "File containing YouTube URLs, one per line")
 	rootCmd.Flags().IntVarP(&workers, "workers", "w", runtime.NumCPU(), "Number of parallel downloads")
+	rootCmd.Flags().StringVarP(&cookiesFile, "cookies", "c", "", "Path to Netscape-format cookies file for YouTube authentication")
 }
 
 // setup runs before any command and ensures yt-dlp (and ffmpeg when needed) are available.
@@ -81,6 +83,7 @@ func run(_ *cobra.Command, args []string) error {
 	cfg := downloader.Config{
 		OutputDir: outputDir,
 		Format:    format,
+		Cookies:   cookiesFile,
 	}
 
 	if len(urls) == 1 {

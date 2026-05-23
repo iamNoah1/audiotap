@@ -25,6 +25,25 @@ var ErrDownloadFailed = errors.New("download failed. Check your connection or tr
 type Config struct {
 	OutputDir string
 	Format    string // mp3, opus, wav
+	Cookies   string // path to Netscape-format cookies file; empty = no cookies
+}
+
+// buildArgs constructs the yt-dlp argument slice for the given URL and config.
+// Extracted so it can be unit-tested without exec.
+func buildArgs(rawURL, outputTemplate string, cfg Config) []string {
+	args := []string{
+		"--no-check-certificates",
+		"-x",
+		"--audio-format", cfg.Format,
+		"--audio-quality", "0",
+		"-o", outputTemplate,
+		"--print", "after_move:filepath",
+	}
+	if cfg.Cookies != "" {
+		args = append(args, "--cookies", cfg.Cookies)
+	}
+	args = append(args, rawURL)
+	return args
 }
 
 // Download extracts audio from a YouTube URL and returns the output file path.
@@ -46,16 +65,7 @@ func Download(rawURL string, cfg Config) (string, error) {
 	}
 
 	outputTemplate := outDir + "/%(title)s.%(ext)s"
-
-	args := []string{
-		"--no-check-certificates",
-		"-x",
-		"--audio-format", cfg.Format,
-		"--audio-quality", "0",
-		"-o", outputTemplate,
-		"--print", "after_move:filepath",
-		rawURL,
-	}
+	args := buildArgs(rawURL, outputTemplate, cfg)
 
 	var stdout, stderr bytes.Buffer
 	cmd := exec.Command(manager.BinaryPath(), args...)

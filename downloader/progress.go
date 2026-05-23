@@ -77,16 +77,13 @@ func DownloadWithProgress(rawURL string, cfg Config) (string, error) {
 
 	outputTemplate := outDir + "/%(title)s.%(ext)s"
 
-	args := []string{
-		"--no-check-certificates",
-		"-x",
-		"--audio-format", cfg.Format,
-		"--audio-quality", "0",
-		"-o", outputTemplate,
-		"--print", "after_move:filepath",
-		"--newline",
-		rawURL,
-	}
+	base := buildArgs(rawURL, outputTemplate, cfg)
+	// buildArgs appends rawURL as the last element; insert --newline before it
+	// so yt-dlp receives flags before the positional URL argument.
+	args := make([]string, 0, len(base)+1)
+	args = append(args, base[:len(base)-1]...)
+	args = append(args, "--newline")
+	args = append(args, rawURL)
 
 	bar := progressbar.NewOptions(100,
 		progressbar.OptionSetWriter(os.Stderr),
